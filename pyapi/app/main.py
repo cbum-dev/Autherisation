@@ -3,6 +3,9 @@ from typing import Optional
 from fastapi.params import Body #to display output in body of terminal .
 from pydantic import BaseModel
 from random import randrange
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
 
 
 app = FastAPI()
@@ -22,11 +25,23 @@ class Post(BaseModel):
     published : bool = True
     rating : Optional[int] = None
 
+while True:
+    try:
+        conn = psycopg2.connect(host = "localhost",database = "db_test",user = "postgres" , password = "",cursor_factory=RealDictCursor)
+        cursor  = conn.cursor()
+        print("DB CONNECTED")
+        break
+    except Exception as error:
+        print("hi",error)
+
 
 
 @app.get("/")
 def read_root():
-    return {"Hello": my_post}
+    cursor.execute(""" SELECT * FROM post""")
+    posts = cursor.fetchall()
+    return {"data":posts}
+    # return {"Hello": my_post}
 
 @app.post("/post",status_code=status.HTTP_201_CREATED) 
 # def create(payLoad: dict = Body(...)): # created a ducntion with variable payload and with dictory bin the body.
