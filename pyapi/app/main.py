@@ -1,34 +1,25 @@
 from fastapi import FastAPI,status,Response,HTTPException,Depends
-from typing import Optional
+from typing import Optional,List
 from fastapi.params import Body #to display output in body of terminal .
 from pydantic import BaseModel
 from random import randrange
 import psycopg2
 from sqlalchemy.orm import Session
 from psycopg2.extras import RealDictCursor
-from . import models
+from . import models,utils
+from . import schemas
 from .database import engine,get_db
+
 
 models.Base.metadata.create_all(bind = engine)
 
 app = FastAPI()
 
 
-
-my_post = [{"title":"Dhoom","content":"nothing","id":1},
-           {"title":"Dhoom2","content":"nothing2","id":2}
-           ]
-
-def find_index(id):
-    for i , p in enumerate(my_post):
-        if p['id'] == id:
-            return i 
-
 class Post(BaseModel):
     title : str
     content : str
     published : bool = True
-    rating : Optional[int] = None
 
 while True:
     try:
@@ -39,14 +30,39 @@ while True:
     except Exception as error:
         print("hi",error)
 
+# Below code is for table posts and written in sqlalchemy form . models form
+@app.get("/sql",response_model=List[schemas.Post])
+def test_post(db : Session = Depends(get_db)):
+    posts = db.query(models.Posts).all()
+    return posts
+
+@app.post("/sql/posts",status_code=status.HTTP_201_CREATED,response_model=schemas.Post)
+def create_posts(post : Post,db:Session = Depends(get_db)):
+    # new_post = models.Posts(title = post.title, content = post.content,published = post.published)
+    new_post = models.Posts(**post.dict())
+    db.add(new_post)
+    db.commit()
+    db.refresh(new_post)
+    return new_post
+
+@app.delete("/sql/posts/{id}",status_code=status.HTTP_204_NO_CONTENT)
+def delete_post(id : int,db:Session = Depends(get_db)):
+    post = db.query(models.Posts).filter(models.Posts.id == id)
+    if post.first() == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Post with this {id} doesn't exist")    
+    post.delete(synchronize_session=False)
+    db.commit()
+    return Response(status_code= status.HTTP_204_NO_CONTENT)
 
 
+#____________________________________________________________________________________
+#Below code is for post table and is written is sql query format.
 @app.get("/")
 def read_root():
     cursor.execute(""" SELECT * FROM post ORDER BY title""")
     posts = cursor.fetchall()
-    return {"data":posts}
-    # return {"Hello": my_post}
+    return posts
 
 @app.post("/post",status_code=status.HTTP_201_CREATED) 
 # def create(payLoad: dict = Body(...)): # created a ducntion with variable payload and with dictory bin the body.
@@ -64,12 +80,7 @@ def create_post(post : Post):
     new_post = cursor.fetchone()
     conn.commit()
     return {"data" : "created SUCCESSFULLY: ","post" : new_post}
-    
-    # return {"data" : post_dict}
 
-# @app.get("/post/{id}")
-# def get_post(id : int , response : Response):
-#     post = find_post
 @app.delete("/post/{id}" , status_code=status.HTTP_204_NO_CONTENT )
 def delete_post(id : int):
     cursor.execute("""DELETE FROM post where id = %s RETURNING *""", (str(id),))
@@ -92,7 +103,13 @@ def update_post(id : int, post : Post):
 
     return {"data": updated_post}
 
-@app.get("/sql")
-def test_post(db : Session = Depends(get_db)):
-    posts = db.query(models.Posts).all()
-    return {"data" : posts}
+
+@app.post("/users",status_code=status.HTTP_201_CREATED)
+def create_user(user: schemas.UserCreated,db:Session = Depends(get_db)):
+    hashed_password  = utils.hash(user.password)
+    user.password = hashed_password
+    new_user = models.User(**user.dict())
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
