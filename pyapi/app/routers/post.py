@@ -7,7 +7,7 @@ from typing import Optional,List
 
 
 
-router = APIRouter(prefix="/sql")
+router = APIRouter(prefix="/sql",tags=["posts"])
 @router.get("/",response_model=List[schemas.Post])
 def test_post(db : Session = Depends(get_db)):
     posts = db.query(models.Posts).all()
@@ -34,7 +34,7 @@ def delete_post(id : int,db:Session = Depends(get_db)):
 
 
 
-
+ 
 
 
 
