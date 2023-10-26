@@ -10,6 +10,7 @@ from . import models,utils
 from . import schemas
 from .database import engine,get_db
 
+from .routers import post,users
 
 models.Base.metadata.create_all(bind = engine)
 
@@ -30,86 +31,5 @@ while True:
     except Exception as error:
         print("hi",error)
 
-# Below code is for table posts and written in sqlalchemy form . models form
-@app.get("/sql",response_model=List[schemas.Post])
-def test_post(db : Session = Depends(get_db)):
-    posts = db.query(models.Posts).all()
-    return posts
-
-@app.post("/sql/posts",status_code=status.HTTP_201_CREATED,response_model=schemas.Post)
-def create_posts(post : Post,db:Session = Depends(get_db)):
-    # new_post = models.Posts(title = post.title, content = post.content,published = post.published)
-    new_post = models.Posts(**post.dict())
-    db.add(new_post)
-    db.commit()
-    db.refresh(new_post)
-    return new_post
-
-@app.delete("/sql/posts/{id}",status_code=status.HTTP_204_NO_CONTENT)
-def delete_post(id : int,db:Session = Depends(get_db)):
-    post = db.query(models.Posts).filter(models.Posts.id == id)
-    if post.first() == None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Post with this {id} doesn't exist")    
-    post.delete(synchronize_session=False)
-    db.commit()
-    return Response(status_code= status.HTTP_204_NO_CONTENT)
-
-
-#____________________________________________________________________________________
-#Below code is for post table and is written is sql query format.
-@app.get("/")
-def read_root():
-    cursor.execute(""" SELECT * FROM post ORDER BY title""")
-    posts = cursor.fetchall()
-    return posts
-
-@app.post("/post",status_code=status.HTTP_201_CREATED) 
-# def create(payLoad: dict = Body(...)): # created a ducntion with variable payload and with dictory bin the body.
-#     print(payLoad)
-#     return {"message" : f"title{payLoad['todo_name']} content{'todo_description'}"}
-# def create_post(post : Post):
-#     # print(post)                     
-#     # print(post.dict())
-#     post_dict = post.dict()
-#     post_dict['id'] = randrange(0,1999999)
-#     my_post.append(post_dict)
-def create_post(post : Post):
-    cursor.execute(""" INSERT INTO post(title,content,published) VALUES
-                   (%s,%s,%s) RETURNING * """,(post.title,post.content,post.published))
-    new_post = cursor.fetchone()
-    conn.commit()
-    return {"data" : "created SUCCESSFULLY: ","post" : new_post}
-
-@app.delete("/post/{id}" , status_code=status.HTTP_204_NO_CONTENT )
-def delete_post(id : int):
-    cursor.execute("""DELETE FROM post where id = %s RETURNING *""", (str(id),))
-    deleted = cursor.fetchone()
-    conn.commit()
-    if deleted == None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Post with this {id} doesn't exist")
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-@app.put("/post/{id}")
-def update_post(id : int, post : Post):
-    cursor.execute("""UPDATE post SET title = %s, content = %s, published = %s WHERE id = %s 
-                   RETURNING *""" ,(post.title,post.content,post.published,str(id)))
-    updated_post = cursor.fetchone()
-    conn.commit()
-    if updated_post == None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Post with this {id} doesn't exist")
-
-    return {"data": updated_post}
-
-
-@app.post("/users",status_code=status.HTTP_201_CREATED)
-def create_user(user: schemas.UserCreated,db:Session = Depends(get_db)):
-    hashed_password  = utils.hash(user.password)
-    user.password = hashed_password
-    new_user = models.User(**user.dict())
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
+app.include_router(post.router)
+app.include_router(users.router)
