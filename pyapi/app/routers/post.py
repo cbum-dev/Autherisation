@@ -7,13 +7,13 @@ from typing import Optional,List
 
 
 
-router = APIRouter()
-@router.get("/sql",response_model=List[schemas.Post])
+router = APIRouter(prefix="/sql")
+@router.get("/",response_model=List[schemas.Post])
 def test_post(db : Session = Depends(get_db)):
     posts = db.query(models.Posts).all()
     return posts
 
-@router.post("/sql/posts",status_code=status.HTTP_201_CREATED,response_model=schemas.Post)
+@router.post("/posts",status_code=status.HTTP_201_CREATED,response_model=schemas.Post)
 def create_posts(post : schemas.PostCreated,db:Session = Depends(get_db)):
     # new_post = models.Posts(title = post.title, content = post.content,published = post.published)
     new_post = models.Posts(**post.dict())
@@ -22,7 +22,7 @@ def create_posts(post : schemas.PostCreated,db:Session = Depends(get_db)):
     db.refresh(new_post)
     return new_post
 
-@router.delete("/sql/posts/{id}",status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/posts/{id}",status_code=status.HTTP_204_NO_CONTENT)
 def delete_post(id : int,db:Session = Depends(get_db)):
     post = db.query(models.Posts).filter(models.Posts.id == id)
     if post.first() == None:
