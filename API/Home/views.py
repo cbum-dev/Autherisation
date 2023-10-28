@@ -30,7 +30,7 @@ def post_todo(request):
     except Exception as e:
         print(e)
         return Response({
-             'status' : True,
+             'status' : False,
              'mmessage' : 'hahaha'
         })
         
