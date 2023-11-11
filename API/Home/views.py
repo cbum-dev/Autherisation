@@ -1,16 +1,13 @@
 # from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from . import serializer
 # Create your views here.
 from .serializer import TodoSerializer
 @api_view(['GET','POST'])
 def home(request):
         if request.method == 'GET':
-            return Response({
-                'status' : 'GET',
-                'messg' : 'working'
-                  
-            })
+            return Response(serializer.TodoSerializer)
         elif request.method == 'POST':
               return Response({
                     'status' : 'POST',
